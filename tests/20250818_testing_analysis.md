@@ -415,3 +415,101 @@ for run in $(seq 1 10); do
 done > pong_filemap.txt
 ~~~
 
+So, I think K=4 is probably the best but the CV plot was weird
+
+# Fst 
+
+So I think we should calculate Fst, Het 
+
+Let's also produce other outputs for the class:
+
+windowed pi, Fst and Tajima's D. This will be from the all sites vcf file.
+
+# 2025-08-25
+
+Calculate Fst between the populations we have defined above:
+
+~~~bash
+WD="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data"
+cd ${WD}
+
+# We can use the same inputs the .bed .bim. .fam files generated in the pca step:
+INPUTWD=${WD}"/03_PCA/01_inputs"
+
+ml load bioinfo-tools vcftools
+
+vcftools --gzvcf ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf3.var.10kbSNPs.chr1.27indv.vcf.gz --weir-fst-pop ${WD}/metadata/FRA.txt --weir-fst-pop ${WD}/metadata/IND.txt --out FRA_vs_IND
+
+vcftools --gzvcf ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf3.var.10kbSNPs.chr1.27indv.vcf.gz --weir-fst-pop ${WD}/metadata/FRA.txt --weir-fst-pop ${WD}/metadata/GER.txt --out FRA_vs_GER
+
+vcftools --gzvcf ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf3.var.10kbSNPs.chr1.27indv.vcf.gz --weir-fst-pop ${WD}/metadata/FRA.txt --weir-fst-pop ${WD}/metadata/HEL.txt --out FRA_vs_HEL
+
+vcftools --gzvcf ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf3.var.10kbSNPs.chr1.27indv.vcf.gz --weir-fst-pop ${WD}/metadata/IND.txt --weir-fst-pop ${WD}/metadata/GER.txt --out IND_vs_GER
+
+vcftools --gzvcf ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf3.var.10kbSNPs.chr1.27indv.vcf.gz --weir-fst-pop ${WD}/metadata/IND.txt --weir-fst-pop ${WD}/metadata/HEL.txt --out IND_vs_HEL
+
+vcftools --gzvcf ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf3.var.10kbSNPs.chr1.27indv.vcf.gz --weir-fst-pop ${WD}/metadata/GER.txt --weir-fst-pop ${WD}/metadata/HEL.txt --out GER_vs_HEL
+
+
+
+~~~
+
+FRA_vs_GER.log:Weir and Cockerham mean Fst estimate: 0.15701
+FRA_vs_HEL.log:Weir and Cockerham mean Fst estimate: 0.25273
+FRA_vs_IND.log:Weir and Cockerham mean Fst estimate: 0.35879
+GER_vs_HEL.log:Weir and Cockerham mean Fst estimate: 0.16392
+IND_vs_GER.log:Weir and Cockerham mean Fst estimate: 0.3514
+IND_vs_HEL.log:Weir and Cockerham mean Fst estimate: 0.34009
+
+FRA_vs_GER.log:Weir and Cockerham weighted Fst estimate: 0.22636
+FRA_vs_HEL.log:Weir and Cockerham weighted Fst estimate: 0.43281
+FRA_vs_IND.log:Weir and Cockerham weighted Fst estimate: 0.5212
+GER_vs_HEL.log:Weir and Cockerham weighted Fst estimate: 0.31501
+IND_vs_GER.log:Weir and Cockerham weighted Fst estimate: 0.51278
+IND_vs_HEL.log:Weir and Cockerham weighted Fst estimate: 0.51278
+
+Compile results for plotting:
+
+grep "Weir and Cockerham mean Fst estimate:" *log | cut -f1,3 -d":" | sed 's/.log:/\t/' > meanFst.out
+grep "Weir and Cockerham weighted Fst estimate:" *log | cut -f1,3 -d":" | sed 's/.log:/\t/' > wFst.out
+
+Let's calculate Heterozygosity and Inbreeding per indivudal:
+
+Here we want to take all sites into account:
+~~~bash
+
+vcf_filtered="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.chr1.27indv.vcf.gz"
+
+vcftools --gzvcf $vcf_filtered --het --out heterozygosity
+~~~
+
+
+~~~bash
+vcf_filtered="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.chr1.27indv.vcf.gz"
+
+vcftools --gzvcf $vcf_filtered --het --out heterozygosity
+vcftools --gzvcf $vcf_filtered --hardy 
+~~~
+
+
+
+
+# Let's do a sliding window Fst, pi and Tajima'sD (?)
+# For this, let's focus on France versus Germany 
+
+vcftools --gzvcf $vcf_filtered --weir-fst-pop ${WD}/metadata/FRA.txt --weir-fst-pop ${WD}/metadata/GER.txt --fst-window-size 10000 --fst-window-step 5000 --out FRA_vs_GER_10kbW5kbstep_chr1
+
+
+
+vcftools --gzvcf $vcf_filtered --keep ${WD}/metadata/FRA.txt --window-pi 10000 --window-pi-step 5000 --out FRA_pi_10kbW5Kbstep_chr1
+vcftools --gzvcf $vcf_filtered --keep ${WD}/metadata/GER.txt --window-pi 10000 --window-pi-step 5000 --out GER_pi_10kbW5Kbstep_chr1
+
+
+vcf_filtered_chr7="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.chr7.27indv.vcf.gz"
+
+vcftools --gzvcf $vcf_filtered_chr7 --weir-fst-pop ${WD}/metadata/FRA.txt --weir-fst-pop ${WD}/metadata/GER.txt --fst-window-size 10000 --fst-window-step 5000 --out FRA_vs_GER_10kbW5kbstep_chr7
+
+vcftools --gzvcf $vcf_filtered_chr7 --keep ${WD}/metadata/FRA.txt --window-pi 10000 --window-pi-step 5000 --out FRA_pi_10kbW5Kbstep_chr7
+vcftools --gzvcf $vcf_filtered_chr7 --keep ${WD}/metadata/GER.txt --window-pi 10000 --window-pi-step 5000 --out GER_pi_10kbW5Kbstep_chr7
+
+

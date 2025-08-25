@@ -54,7 +54,7 @@ cd $INPUTWD
 #bcftools filter -i 'QUAL>=30 && MQ>=30 && INFO/DP<1900' -Oz -o chr1.27indv.QUAL30_MQ30_depthFilter1900.vcf.gz chr1.27indv.vcf.gz
 
 # Sample specific filters:
-bcftools filter -S . -i 'FMT/GQ>=20 & FMT/DP>5' -Oz -o chr1.27indv.QUAL30_MQ30_depthFilter1900_GQ20_DP5.vcf.gz chr1.27indv.QUAL30_MQ30_depthFilter1900.vcf.gz
+bcftools filter -S . -i 'TYPE="snp" & FMT/GQ>=20 & FMT/DP>5' -Oz -o chr1.27indv.QUAL30_MQ30_depthFilter1900_GQ20_DP5.vcf.gz chr1.27indv.QUAL30_MQ30_depthFilter1900.vcf.gz
 
 # Finally, select variants that have PASS the above filters, are not indels, don't have * ALT alleles and where the reference is not a missing genotype "N"
 bcftools view -f PASS -e 'ALT="*" | TYPE~"indel" | ref="N"' -O z -o chr1.27indvs.QUALFilters.vcf.gz chr1.27indv.QUAL30_MQ30_depthFilter1900_GQ20_DP5.vcf.gz
@@ -62,3 +62,4 @@ bcftools view -f PASS -e 'ALT="*" | TYPE~"indel" | ref="N"' -O z -o chr1.27indvs
 bcftools index chr1.27indvs.QUALFilters.vcf.gz
 bcftools stats -s - chr1.27indvs.QUALFilters.vcf.gz > chr1.27indvs.QUALFilters.stats
 ~~~
+
