@@ -1,0 +1,22 @@
+
+VCFtools - 0.1.16
+(C) Adam Auton and Anthony Marcketta 2009
+
+Parameters as interpreted:
+	--gzvcf /cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.chr7.27indv.vcf.gz
+	--keep /cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/metadata/FRA.txt
+	--out FRA_pi_10kbW5Kbstep_chr7
+	--window-pi 10000
+	--window-pi-step 5000
+
+Using zlib version: 1.3.1
+Warning: Expected at least 2 parts in INFO entry: ID=SGB,Number=1,Type=Float,Description="Segregation based metric, http://samtools.github.io/bcftools/rd-SegBias.pdf">
+Warning: Expected at least 2 parts in INFO entry: ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes for each ALT allele, in the same order as listed">
+Warning: Expected at least 2 parts in INFO entry: ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
+Warning: Expected at least 2 parts in INFO entry: ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
+Warning: Expected at least 2 parts in FORMAT entry: ID=SnpGap,Description="SNP within 5 bp of indel,other">
+Keeping individuals in 'keep' list
+After filtering, kept 8 out of 27 Individuals
+Outputting Windowed Nucleotide Diversity Statistics...
+After filtering, kept 1687842 out of a possible 1687842 Sites
+Run Time = 16.00 seconds

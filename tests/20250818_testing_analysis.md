@@ -345,7 +345,7 @@ Let's run faststructure
 #SBATCH --mail-user=sferreira.mafalda@gmail.com
 
 # Load:
-ml load bioinfo-tools fastStructure plink
+ml load bioinfo-tools fastStructure plink ADMIXTURE/1.3.0
 
 # Set working environment variables:
 WD="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data"
@@ -354,12 +354,64 @@ cd ${WD}
 # We can use the same inputs the .bed .bim. .fam files generated in the pca step:
 INPUTWD=${WD}"/03_PCA/01_inputs"
 OUTPUTPCAWD=${WD}"/04_FastStructure/02_results"
+OUTPUTPCAWD2=${WD}"/04_Admixture/02_results"
 
 # If the directories don't exist, create them:
 mkdir -p $OUTPUTPCAWD
+mkdir -p $OUTPUTPCAWD2
 
 # FastStructure accepts the classical plink input files, which we can generate with plink itself:
 
-plink --vcf ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv.vcf.gz --double-id --allow-extra-chr --set-missing-var-ids @:# --make-bed --out ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv
+#plink --vcf ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv.vcf.gz --double-id --allow-extra-chr --set-missing-var-ids @:# --make-bed --out ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv
 
-structure.py -K 2 --input=${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv --output=${OUTPUTPCAWD}/K2.chr1 --format=bed 
+#for k in $(seq 1 10); 
+#do
+#structure.py -K ${k} --cv 10 --input=${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.#maf5.var.10kbSNPs.chr1.27indv --output=${OUTPUTPCAWD}/K${k}.chr1 --format=bed; 
+#done;
+
+cd ${OUTPUTPCAWD2}
+
+for run in $(seq 1 10);
+do mkdir -p ${OUTPUTPCAWD2}/run${run};
+cd ${OUTPUTPCAWD2}/run${run};
+
+for k in $(seq 1 10); 
+do
+
+admixture --cv ${INPUTWD}/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv.bed ${k} | tee log_k${k}_run${run}.out; 
+done;
+done;
+
+# Cross validation
+
+~~~
+
+grep -h CV log*.out
+grep -h CV log*.out | cut -d" " -f3,4 | sed 's/(K=//g' | sed 's/)://g' | tr " " "\t" > cross_validation_values.txt
+
+
+After running this, let's run pong:
+
+~~~bash
+# generate the input files:
+
+# Set working environment variables:
+WD="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data"
+cd ${WD}
+
+# We can use the same inputs the .bed .bim. .fam files generated in the pca step:
+INPUTWD=${WD}"/03_PCA/01_inputs"
+OUTPUTPCAWD=${WD}"/04_FastStructure/02_results"
+OUTPUTPCAWD2=${WD}"/04_Admixture/02_results"
+
+cd ${OUTPUTPCAWD2}
+vcfname="AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv"
+
+for run in $(seq 1 10); do
+    for k in $(seq 1 10); do 
+
+        awk -v R="$run" -v K="$k" -v vcf="$vcfname" 'BEGIN{printf "K%sR%s\t%s\trun%s/%s.%s.Q\n", K, R, K, R, vcf, K}' 
+    done;
+done > pong_filemap.txt
+~~~
+
