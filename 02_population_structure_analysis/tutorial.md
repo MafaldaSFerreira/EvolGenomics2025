@@ -2,140 +2,6 @@
 
 In this tutorial, we will cover how to use a population vcf file to study population structure in our dataset using Principal Component Analysis, Admixture and summary statistics (Fst)
 
-## Applying Population filters to SNP dataset
-We need allele frequency data for these analyses, which we calculate from SNP data. To ensure condifence in our calculations, we will keep only sites with two alleles (i.e., biallelic sites) and for which the minor allele frequency is higher than 0.05. This ensures we are not calculating allele frequencies from rare variants that could be technical errors generated during sequencing. We also only want to keep sites where we have information for a minimum number of individuals.
-
-The tool we are using today to perform this filtering is `vcftools`. 
-
-Let's breakdown the filters in the vcftools command below:
-~~~
-    # Exclude sites where more than 20% of the individuals have missing genotypes
-    --max-missing 0.2 \ 
-    # Exclude sites with less than 2 alleles
-    --min-alleles 2 \ 
-    # Exclude sites with more than 2 alleles
-    --max-alleles 2 \ 
-    # Exclude sites where the minor allele has a frequency lower than 0.05
-    --maf 0.05 \ 
-    # Output a vcf file
-    --recode --recode-INFO-all --stdout | bgzip -c > ${OUTPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.vcf.gz
-~~~
-
-Now we can run this as a bash script on the cluster:
-~~~bash
-#!/bin/bash
-#SBATCH -A naiss2025-22-172
-#SBATCH --job-name=vcftools
-#SBATCH --output=logs/vcftools_%A_%a.out
-#SBATCH --error=logs/vcftools_%A_%a.err
-#SBATCH -p shared
-#SBATCH -n 6
-#SBATCH -N 1
-#SBATCH --time=1-00:00:00 
-#SBATCH --mail-type=all
-#SBATCH --mail-user=sferreira.mafalda@gmail.com
-
-# load necessary software
-ml load bioinfo-tools vcftools
-
-# Define the path to your input vcf file:
-INPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/01_filtered_vcfs"
-
-# Define the path where you want to store the output file:
-OUTPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis"
-
-# Run vcftools_
-vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.vcf.gz --max-missing 0.2 --min-alleles 2 --max-alleles 2 --maf 0.05 --recode --recode-INFO-all --stdout | bgzip -c > ${OUTPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.vcf.gz
-~~~
-
-
-Another important filter we will do for the population structure analysis is one where we will thin our SNP dataset so that we keep SNPs that are least 10kb from each other. This allows us to keep variants that may be evolving approximately independetly from each other, since they will be in separate recombination blocks. SNPs that are linked to each other will give the same information about neutral population demography. We will create a separate vcf file here, since we might still want to do analysis with all SNPs later on, like calculating heterozygosity.
-
-~~~
-# Keep SNPs that are at least 10kb from each other
-    --thin 10000
-~~~
-
-
-~~~bash
-#!/bin/bash
-#SBATCH -A naiss2025-22-172
-#SBATCH --job-name=vcftools
-#SBATCH --output=logs/thin_%A_%a.out
-#SBATCH --error=logs/thin_%A_%a.err
-#SBATCH -p shared
-#SBATCH -n 6
-#SBATCH -N 1
-#SBATCH --time=1-00:00:00 
-#SBATCH --mail-type=all
-#SBATCH --mail-user=sferreira.mafalda@gmail.com
-
-# load necessary software
-ml load bioinfo-tools vcftools
-
-# Define the path to your input vcf file:
-INPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis"
-
-# Define the path where you want to store the output file:
-OUTPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis"
-
-vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.vcf.gz --thin 10000 --recode --recode-INFO-all --stdout | bgzip -c > ${OUTPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz  
-~~~
-
-Finally, we will need plink input files which are in .bed .bim and .fam formats. Since we will need them both for PCA and admixture analysis, let's generate this plink input files in the same 02_filtered_vcfs_for_analysis folder.
-
-~~~
-    # causes both family and within-family IDs to be set to the sample ID
-    --double-id
-    # to allow non human chromosome codes
-    --allow-extra-chr
-    # adds IDs to variants
-    --set-missing-var-ids @:#
-    # make the bed input files
-    --make-bed
-    # name the bed files
-    --out ${OUTPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs
-~~~
-
-run_plink_makebed.sh
-~~~bash
-#!/bin/bash
-#SBATCH -A naiss2025-22-172
-#SBATCH --job-name=plink
-#SBATCH --output=logs/plink_%A_%a.out
-#SBATCH --error=logs/plink_%A_%a.err
-#SBATCH -p shared
-#SBATCH -n 6
-#SBATCH -N 1
-#SBATCH --time=1-00:00:00 
-#SBATCH --mail-type=all
-#SBATCH --mail-user=sferreira.mafalda@gmail.com
-
-# load necessary software
-ml load bioinfo-tools plink
-
-# Define the path to your input file:
-INPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis"
-
-# Define the path where you want to store the output file:
-OUTPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis"
-
-plink --vcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --double-id --allow-extra-chr --set-missing-var-ids @:# --make-bed --out ${OUTPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs
-
-~~~
-
-To facilitate our analysis, I have placed a set of metadata files on the server. 
-
-~~~bash
-ls metadata/
-FRA.txt  GER.txt  HEL.txt  IND.txt  populations.txt  samples.txt
-~~~
-
-`samples.txt` : contains the list of all 27 individuals in the order they appear in the vcf file
-
-`populations.txt` : contains the population assignment of each individual, in the order the individuals are in the vcf file
-
-`FRA.txt`, `GER.txt`, `HEL.txt` and `IND.txt`: files containing the list of individuals from each population.
 
 ## Principal Component Analysis with PLINK
 
@@ -177,19 +43,81 @@ mkdir -p ${OUTPUT_DIR}
 plink --bfile ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs --pca --out ${OUTPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.PCA
 ~~~
 
+In the output folder, you will find four files.
 
-We will now move to R to plot the output files of the PCA:
+~~~
+# A file containing the percentage variation explained by the first 20 PC axis.
+chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.PCA.eigenval
+
+# A matrix file containing per individual  PC loadings for PC1 to PC20. 
+chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.PCA.eigenvec  
+
+# List of individuals
+chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.PCA.nosex
+
+# Log of the run
+chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.PCA.log
+~~~
+
+We want to use `.eigenvec` and `.eigenval` to plot in R. So download them to your local folder.
+
 ~~~R
 #Plotting files in R
 
+# LIBRARIES ####
+library(tidyverse)
+
+# INPUTS ####
+# 1. Define your working directory:
+setwd("~/Documents/Ferreira_SU/Repositories/EvolGenomics2025/pca/")
+
+#-------------------------
+# Sample info (used for all plots)
+#-------------------------
+metadata <- read.table("metadata/sample_metadata.txt", header=T)
+
+#-------------------------
+# File paths (your actual files)
+#-------------------------
+eigenvec_file <- "02_results/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv.eigenvec"
+eigenval_file <- "02_results/AllMouseAUTO_SNP_ONLY_depthFilter5031_MQ30_QUAL30_SP_3_soft_filtered_20_5_reheader.miss20.biallelic.maf5.var.10kbSNPs.chr1.27indv.eigenval"
+
+#-------------------------
+# Read input files
+#-------------------------
+
+pca <- read.table(eigenvec_file, header=F)
+eigenval <- scan(eigenval_file)
+
+# Drop nuisance first column, set names to match your code
+pca <- pca[ , -1]
+names(pca)[1] <- "ind"
+names(pca)[2:ncol(pca)] <- paste0("PC", 1:(ncol(pca)-1))
+
+# Calculate the % variance explained
+pve <- eigenval / sum(eigenval) * 100
+
+# Merge with metadata + ensure stable factor order for colors
+pca_with_info <- merge(pca, metadata, by.x = "ind", by.y = "sample_id")
+
+# Plot
+p <- ggplot(pca_with_info, aes(PC1, PC2, col = population, shape = species)) +
+  geom_point(size = 2, alpha = 0.9)
+
+# Let's add the information about the pve to each axis
+p_maf5 <- p + labs(
+  x = paste0("PC1 (", signif(pve[1], 3), "%)"),
+  y = paste0("PC2 (", signif(pve[2], 3), "%)"))
+
+ggsave(p_maf5, filename="figures/pca.pdf")
 ~~~
 
-
+>Q. How do populations separate in the Principal Component Analysis? What does the distance between suggest about their differentiation?
 
 
 ## Estimating Ancestry using ADMIXTURE
 
-We will use the software `ADMIXTURE` to run an ancestry analysis. 
+In complement to PCA, we will use the software `ADMIXTURE` to run an ancestry analysis. 
 
 We will run the software 6 times, each time changing the expected value of K , or ancestral populations, from 1 to 6. The reason to choose 6 comes from our a priori knowledge of the dataset. We know we have sampled individuals from 4 regions so that might be the most likely number of ancestral populations, but we can run admixture until K=6 to understand if any individual show signs of admixed ancestry. 
 
@@ -238,7 +166,18 @@ for k in $(seq 1 6);
 done;
 ~~~
 
-After admixture has run, navigate inside the OUTPUT_DIR file, where all the outputs are stored.
+After ADMIXTURE has run, navigate inside the OUTPUT_DIR file, where all the outputs are stored. Here you will find three files per run:
+
+~~~
+# P (the allele frequencies of the inferred ancestral populations)
+chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.1.P
+
+# Q (the ancestry fractions); which we use for plotting:
+chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.1.Q
+
+# Log output of the run, which contains the likelihood and cross validation error.
+log_k1.out
+~~~
 
 Before we plot the admixture results, we will compile the cross validation error results to estimate the best value of K in our dataset. We can run the code below to perform this task.
 
@@ -343,10 +282,10 @@ K2_plot <- ggplot(K2_tbl_with_metadata_long, aes(x=indv, y=admix_proportion, fil
           axis.text.x=element_text(size=6,angle=90, vjust=0.5, hjust=1),
           axis.title.x=element_blank())
 
-ggsave(K2_plot, filename="K2_plot.pdf", width=10, height=5)
+ggsave(K2_plot, filename="figures/K2_plot.pdf", width=10, height=5)
 ~~~
 
-Great , we learned how to do one plot. 
+Great, we learned how to do one plot. 
 
 I have generated a function below that allows us to plot all Ks at once and outputs a pdf file.
 
@@ -402,4 +341,162 @@ plot_admixture(file_list, sample_order, metadata, "admixture_plots.pdf")
     
 ~~~
 
-> Q. What is your conclusion about the best number of K?
+## Genetic differentiation between populations and levels of diveristy 
+
+The previous analysis alowed us to confirm the number of populations we have in our dataset. We learned that we likely have 4 populations, with a low level of admixture between then. With this information, we will now calculate genetic differentiation (Fst) between populations to understand how differentiated they are. We will also assess levels of genetic diveristy (heterozygosity) and inbreeding (FIS) to learn more about the demography of the populations. 
+
+We will again use `vcftools` to make the calculations we need. To calculate Fst among populations, we will use the same set of independent SNPs we used for PCA and ADMIXTURE analysis. We will perform calculations in a pairwise fassion between populations. We will several input files contained in `metadata/` which contain a list of individual names per population.
+
+~~~bash
+ls metadata/
+FRA.txt  GER.txt  HEL.txt  IND.txt
+~~~
+
+~~~bash
+#!/bin/bash
+#SBATCH -A naiss2025-22-172
+#SBATCH --job-name=FST
+#SBATCH --output=logs/FST_%A_%a.out
+#SBATCH --error=logs/FST_%A_%a.err
+#SBATCH -p shared
+#SBATCH -n 4
+#SBATCH -N 1
+#SBATCH --time=01:00:00 
+#SBATCH --mail-type=all
+#SBATCH --mail-user=sferreira.mafalda@gmail.com
+
+# Load the necessary software
+ml load bioinfo-tools vcftools
+
+# Define the path to your input file:
+INPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis"
+
+# Metadata directory
+METADATA_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/metadata"
+
+# Define the path where you want to store the output file:
+OUTPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/05_FST"
+
+# This command with create the output directory, if it doesn't exist:
+mkdir -p ${OUTPUT_DIR}
+
+cd ${OUTPUT_DIR}
+
+# Run vcftools for each population pair
+vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --weir-fst-pop ${METADATA_DIR}/FRA.txt --weir-fst-pop ${METADATA_DIR}/IND.txt --out FRA_vs_IND
+
+vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --weir-fst-pop ${METADATA_DIR}/FRA.txt --weir-fst-pop ${METADATA_DIR}/GER.txt --out FRA_vs_GER
+
+vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --weir-fst-pop ${METADATA_DIR}/FRA.txt --weir-fst-pop ${METADATA_DIR}/HEL.txt --out FRA_vs_HEL
+
+vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --weir-fst-pop ${METADATA_DIR}/IND.txt --weir-fst-pop ${METADATA_DIR}/GER.txt --out IND_vs_GER
+
+vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --weir-fst-pop ${METADATA_DIR}/IND.txt --weir-fst-pop ${METADATA_DIR}/HEL.txt --out IND_vs_HEL
+
+vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --weir-fst-pop ${METADATA_DIR}/GER.txt --weir-fst-pop ${METADATA_DIR}/HEL.txt --out GER_vs_HEL
+~~~
+
+After the commands has run, you will find a set of `.log` files which will contain the Fst calculations per population.
+
+Use `grep` to extract them all comparisons at the same time.
+
+~~~
+grep "Weir and Cockerham mean Fst estimate:" *log | cut -f1,3 -d":" | sed 's/.log:/\t/' > meanFst.out
+grep "Weir and Cockerham weighted Fst estimate:" *log | cut -f1,3 -d":" | sed 's/.log:/\t/' > wFst.out
+~~~
+
+Use `cat` to inspect the file.
+
+~~~bash
+#!/bin/bash
+#SBATCH -A naiss2025-22-172
+#SBATCH --job-name=het
+#SBATCH --output=logs/het_%A_%a.out
+#SBATCH --error=logs/het_%A_%a.err
+#SBATCH -p shared
+#SBATCH -n 4
+#SBATCH -N 1
+#SBATCH --time=01:00:00 
+#SBATCH --mail-type=all
+#SBATCH --mail-user=sferreira.mafalda@gmail.com
+
+# Load the necessary software
+ml load bioinfo-tools vcftools
+
+# Define the path to your input file:
+INPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/02_filtered_vcfs_for_analysis"
+
+# Define the path where you want to store the output file:
+OUTPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mouse_data/05_FST"
+
+# This command with create the output directory, if it doesn't exist:
+mkdir -p ${OUTPUT_DIR}
+
+cd ${OUTPUT_DIR}
+
+vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --het --out het_fis_calculations
+~~~
+
+Here, the output file we are interested is `het_fis_calculations.het`.
+
+
+~~~R
+# LIBRARIES ####
+library(tidyverse)
+
+# INPUTS ####
+# 1. Define your working directory:
+setwd("~/Documents/Ferreira_SU/Repositories/EvolGenomics2025/summary_stats/")
+
+# wFST and meanFst
+wFst <- read.table("results/wFst.out", header = F)
+meanFst <- read.table("results/meanFst.out", header = F)
+
+# Add column names to the tables
+colnames(wFst) <- c("contrast", "wFst")
+colnames(meanFst) <- c("contrast", "meanFst")
+
+# Let's combine both values into one single table
+Fst_tbl <- merge(meanFst, wFst, by="contrast")
+
+# Let's create two columns containing the names of pop1 and pop2
+Fst_tbl$pop1 <- str_split_fixed(Fst_tbl$contrast, "_vs_", 2)[,1]
+Fst_tbl$pop2 <- str_split_fixed(Fst_tbl$contrast, "_vs_", 2)[,2]
+
+# let's plot the Fst values as a heatmap
+ggplot(Fst_tbl) +
+  geom_tile(aes(x=pop1, y=pop2, fill=wFst))+
+  geom_text(aes(x=pop1, y=pop2, label=wFst), color="white")
+~~~
+
+
+
+
+~~~R
+# LIBRARIES ####
+library(tidyverse)
+
+# INPUTS ####
+# 1. Define your working directory:
+
+het_tbl <- read.table("results/heterozygosity.out.het", header=T)
+
+# let's plot by individual:
+
+ggplot(het_tbl) +
+  geom_boxplot(aes(y=F))
+
+# here, it will be nice to have metadata information added to the table
+# so that we can plot the results by population.
+metadata <- read.table("metadata/sample_metadata.txt", header=T)
+
+het_tbl_metadata <- merge(het_tbl, metadata, by.x="INDV", by.y="sample_id")
+
+ggplot(het_tbl_metadata) +
+  geom_boxplot(aes(y=F, x=population_code))
+
+# We can also plot the proportion of observed homozygote sites 
+# per population. What do you observe? How does that relate to the values above?
+ggplot(het_tbl_metadata) +
+  geom_boxplot(aes(y=O.HOM./N_SITES, x=population_code))
+~~~
