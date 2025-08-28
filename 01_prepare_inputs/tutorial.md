@@ -135,6 +135,7 @@ OUTPUT_DIR="/cfs/klemming/scratch/m/mafaldaf/Teaching/20250900_EvolGenomics/mous
 vcftools --gzvcf ${INPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.vcf.gz --thin 10000 --recode --recode-INFO-all --stdout | bgzip -c > ${OUTPUT_DIR}/chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz  
 ~~~
 
+### Convert from vcf to plink input files
 Finally, we will need plink input files which are in .bed .bim and .fam formats. Since we will need them both for PCA and admixture analysis, let's generate this plink input files in the same 02_filtered_vcfs_for_analysis folder.
 
 ~~~
