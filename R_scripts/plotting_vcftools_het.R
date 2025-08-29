@@ -12,12 +12,12 @@ suppressPackageStartupMessages({
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 3) {
-  stop("Usage: ./plot_heterozygosity.R <het_file> <metadata_file> <output_pdf>\n")
+  stop("Usage: ./plot_heterozygosity.R <het_file> <metadata_file> <output_png>\n")
 }
 
 het_file     <- args[1]
 metadata_file <- args[2]
-output_pdf    <- args[3]
+output_png    <- args[3]
 
 # READ DATA ####
 het_tbl <- read.table(het_file, header = TRUE)
@@ -28,7 +28,7 @@ het_tbl_metadata <- merge(het_tbl, metadata,
                           by.x = "INDV", by.y = "sample_id")
 
 # PLOTTING ####
-pdf(output_pdf, width = 8, height = 6)
+pdf(output_png, width = 8, height = 6)
 
 # Plot 1: Boxplot by population
 print(
