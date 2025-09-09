@@ -19,10 +19,12 @@ cp /data/MsC2025/shared_data/practical_4/metadata_files/IND.txt .
 cp /data/MsC2025/shared_data/practical_4/metadata_files/HEL.txt .
 ~~~
 
-Between GER vs HEL
+Between GER vs HEL:
 ~~~bash
 vcftools --gzvcf chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --weir-fst-pop GER.txt --weir-fst-pop HEL.txt --out GER_vs_HEL
 ~~~
+
+The remaining comparisons:
 
 ~~~bash 
 vcftools --gzvcf chr1.27indvs.QUALFilters.POPFilters.10kbSNPs.vcf.gz --weir-fst-pop GER.txt --weir-fst-pop FRA.txt --out GER_vs_FRA
